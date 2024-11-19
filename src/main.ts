@@ -121,9 +121,11 @@ function spawnCache(i: number, j: number) {
       <div>Coins in cache: <span id="cacheCoins">${coins.length}</span></div>
       <div>Your coins: <span id="playerCoins">${playerPoints}</span></div>
       <ul id="coinList">
-        ${coins
-          .map((coin) => `<li>${coin.getRepresentation()}</li>`)
-          .join("")}
+        ${
+          coins
+            .map((coin) => `<li>${coin.getRepresentation()}</li>`)
+            .join("")
+        }
       </ul>
       <button id="collect">Collect</button>
       <button id="deposit">Deposit</button>
@@ -137,10 +139,10 @@ function spawnCache(i: number, j: number) {
           const collectedCoin = coins.pop()!;
           collectedCoin.currentOwner = "player"; // Update ownership
           playerPoints++;
-          popupDiv.querySelector<HTMLSpanElement>("#cacheCoins")!.textContent =
-            coins.length.toString();
-          popupDiv.querySelector<HTMLSpanElement>("#playerCoins")!.textContent =
-            playerPoints.toString();
+          popupDiv.querySelector<HTMLSpanElement>("#cacheCoins")!
+            .textContent = coins.length.toString();
+          popupDiv.querySelector<HTMLSpanElement>("#playerCoins")!
+            .textContent = playerPoints.toString();
           popupDiv.querySelector<HTMLUListElement>("#coinList")!.innerHTML =
             coins
               .map((coin) => `<li>${coin.getRepresentation()}</li>`)
@@ -163,10 +165,10 @@ function spawnCache(i: number, j: number) {
             depositedCoin.currentOwner = { i, j }; // Update ownership
             coins.push(depositedCoin);
             playerPoints--;
-            popupDiv.querySelector<HTMLSpanElement>("#cacheCoins")!.textContent =
-              coins.length.toString();
-            popupDiv.querySelector<HTMLSpanElement>("#playerCoins")!.textContent =
-              playerPoints.toString();
+            popupDiv.querySelector<HTMLSpanElement>("#cacheCoins")!
+              .textContent = coins.length.toString();
+            popupDiv.querySelector<HTMLSpanElement>("#playerCoins")!
+              .textContent = playerPoints.toString();
             popupDiv.querySelector<HTMLUListElement>("#coinList")!.innerHTML =
               coins
                 .map((coin) => `<li>${coin.getRepresentation()}</li>`)
