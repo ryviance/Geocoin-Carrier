@@ -13,7 +13,8 @@ const NEIGHBORHOOD_SIZE = 8; // Radius of the neighborhood in grid cells
 const CACHE_SPAWN_PROBABILITY = 0.1;
 
 // Starting location (Oakes College classroom)
-const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
+const OAKES_CLASSROOM = leaflet.latLng(36.98952979588401, -122.06275528548504);
+let playerLocation = OAKES_CLASSROOM;
 
 // Initialize map
 const map = leaflet.map(document.getElementById("map")!, {
@@ -35,14 +36,171 @@ leaflet
   .addTo(map);
 
 // Add a player marker
-const playerMarker = leaflet.marker(OAKES_CLASSROOM);
+const playerMarker = leaflet.marker(playerLocation);
 playerMarker.bindTooltip("That's you!");
 playerMarker.addTo(map);
 
 // Display the player's points
-let playerPoints = 0;
+const playerCoins: Coin[] = []; // Array to hold the player's collected coins
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "No coins yet...";
+
+// State preservation using Memento pattern
+const cacheStateMemento = new Map<string, { coins: Coin[] }>();
+
+function saveCacheState(i: number, j: number, coins: Coin[]) {
+  cacheStateMemento.set(`${i},${j}`, { coins: [...coins] });
+}
+
+function loadCacheState(i: number, j: number): { coins: Coin[] } | null {
+  return cacheStateMemento.get(`${i},${j}`) || null;
+}
+
+// Coin class and global registry
+class Coin {
+  static nextID = 0;
+  coinID: number;
+  currentOwner: string | { i: number; j: number };
+
+  constructor(public i: number, public j: number, public serial: number) {
+    this.coinID = Coin.nextID++;
+    this.currentOwner = { i, j };
+  }
+
+  getRepresentation(): string {
+    return `${this.i}:${this.j}#${this.serial}`;
+  }
+}
+
+const globalCoinRegistry = new Map<number, Coin>();
+
+function generateCoin(i: number, j: number, serial: number): Coin {
+  const coin = new Coin(i, j, serial);
+  globalCoinRegistry.set(coin.coinID, coin);
+  return coin;
+}
+
+// Add caches dynamically
+function spawnCache(i: number, j: number) {
+  const state = loadCacheState(i, j);
+  const coins = state?.coins || [];
+
+  if (!state) {
+    const initialCoinCount = Math.floor(
+      luck([i, j, "coinCount"].toString()) * 5
+    );
+    for (let k = 0; k < initialCoinCount; k++) {
+      coins.push(generateCoin(i, j, k));
+    }
+    saveCacheState(i, j, coins);
+  }
+
+  const bounds = leaflet.latLngBounds([
+    [i * TILE_DEGREES, j * TILE_DEGREES],
+    [(i + 1) * TILE_DEGREES, (j + 1) * TILE_DEGREES],
+  ]);
+
+  const rect = leaflet.rectangle(bounds, { color: "blue", weight: 1 });
+  rect.addTo(map);
+
+  rect.bindPopup(() => {
+    const popupDiv = document.createElement("div");
+    popupDiv.innerHTML = `
+      <div>Cache at (${i}, ${j})</div>
+      <div>Coins in cache: <span id="cacheCoins">${coins.length}</span></div>
+      <ul id="cacheCoinList">
+        ${coins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")}
+      </ul>
+      <div>Your coins: <span id="playerPoints">${playerCoins.length}</span></div>
+      <ul id="playerCoinList">
+        ${playerCoins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")}
+      </ul>
+      <div style="margin-top: 10px;">
+        <select id="collectCoinSelector" style="width: 180px;"></select>
+        <button id="collectCoins" style="margin-left: 5px;">Collect Coin</button>
+      </div>
+      <div style="margin-top: 10px;">
+        <select id="depositCoinSelector" style="width: 180px;"></select>
+        <button id="depositCoins" style="margin-left: 5px;">Deposit Coin</button>
+      </div>
+    `;
+  
+    setTimeout(() => {
+      const collectButton = popupDiv.querySelector("#collectCoins");
+      const depositButton = popupDiv.querySelector("#depositCoins");
+      const collectSelector = popupDiv.querySelector<HTMLSelectElement>("#collectCoinSelector");
+      const depositSelector = popupDiv.querySelector<HTMLSelectElement>("#depositCoinSelector");
+  
+      collectButton?.addEventListener("click", () => {
+        if (coins.length > 0 && collectSelector?.value) {
+          const selectedIndex = parseInt(collectSelector.value, 10);
+          const collectedCoin = coins.splice(selectedIndex, 1)[0]; // Remove the selected coin from cache
+          if (collectedCoin) {
+            playerCoins.push(collectedCoin); // Add it to player's inventory
+            saveCacheState(i, j, coins); // Save updated cache state
+            updatePopupUI();
+            updateStatusPanel(); // Update the status panel
+          }
+        }
+      });
+      
+  
+      depositButton?.addEventListener("click", () => {
+        if (playerCoins.length > 0 && depositSelector?.value) {
+          const selectedIndex = parseInt(depositSelector.value, 10);
+          const selectedCoin = playerCoins.splice(selectedIndex, 1)[0]; // Remove selected coin from inventory
+          coins.push(selectedCoin); // Add the coin to the cache
+          saveCacheState(i, j, coins); // Save updated cache state
+          updatePopupUI();
+          updateStatusPanel(); // Update the status panel
+        }
+      });      
+  
+      // Update the UI dynamically after changes
+      function updatePopupUI() {
+        popupDiv.querySelector("#cacheCoins")!.textContent = coins.length.toString();
+        popupDiv.querySelector("#playerPoints")!.textContent = playerCoins.length.toString();
+  
+        const cacheCoinList = popupDiv.querySelector("#cacheCoinList")!;
+        cacheCoinList.innerHTML = coins
+          .map((coin) => `<li>${coin.getRepresentation()}</li>`)
+          .join("");
+  
+        const playerCoinList = popupDiv.querySelector("#playerCoinList")!;
+        playerCoinList.innerHTML = playerCoins
+          .map((coin) => `<li>${coin.getRepresentation()}</li>`)
+          .join("");
+  
+        const collectOptions = popupDiv.querySelector("#collectCoinSelector")!;
+        collectOptions.innerHTML = coins
+          .map((coin, idx) => `<option value="${idx}">${coin.getRepresentation()}</option>`)
+          .join("");
+  
+        const depositOptions = popupDiv.querySelector("#depositCoinSelector")!;
+        depositOptions.innerHTML = playerCoins
+          .map((coin, idx) => `<option value="${idx}">${coin.getRepresentation()}</option>`)
+          .join("");
+      }
+  
+      updatePopupUI(); // Initial UI update
+    });
+
+    return popupDiv;
+  });
+}
+
+// Status Panel
+function updateStatusPanel() {
+  const statusPanel = document.getElementById("statusPanel");
+  if (statusPanel) {
+    if (playerCoins.length === 0) {
+      statusPanel.innerHTML = "No coins yet...";
+    } else {
+      statusPanel.innerHTML = `You have ${playerCoins.length} coin(s).`;
+    }
+  }
+}
+
 
 // Flyweight pattern to manage cells
 const cellFactory = (() => {
@@ -62,138 +220,48 @@ const cellFactory = (() => {
   };
 })();
 
-// Coin factory with global tracking
-class Coin {
-  static nextID = 0; // Global counter for unique IDs
-  coinID: number; // Unique ID
-  currentOwner: string | { i: number; j: number }; // Player or cache location
-
-  constructor(
-    public i: number,
-    public j: number,
-    public serial: number
-  ) {
-    this.coinID = Coin.nextID++;
-    this.currentOwner = { i, j }; // Initial cache location
-  }
-
-  // Compact representation for the user
-  getRepresentation(): string {
-    return `${this.i}:${this.j}#${this.serial}`;
-  }
-}
-
-// Global registry of all coins
-const globalCoinRegistry = new Map<number, Coin>();
-
-function generateCoin(i: number, j: number, serial: number): Coin {
-  const coin = new Coin(i, j, serial);
-  globalCoinRegistry.set(coin.coinID, coin); // Add to global registry
-  return coin;
-}
-
-// Add caches to the map by cell numbers
-function spawnCache(i: number, j: number) {
-  // Calculate bounds of the grid cell
-  const bounds = leaflet.latLngBounds([
-    [i * TILE_DEGREES, j * TILE_DEGREES],
-    [(i + 1) * TILE_DEGREES, (j + 1) * TILE_DEGREES],
-  ]);
-
-  // Each cache starts with a random number of coins
-  const coins: Coin[] = [];
-  const initialCoinCount =
-    Math.floor(luck([i, j, "coinCount"].toString()) * 5) + 1; // Random 1-5 coins
-  for (let k = 0; k < initialCoinCount; k++) {
-    const coin = generateCoin(i, j, k);
-    coins.push(coin);
-  }
-
-  // Add a rectangle to represent the cache
-  const rect = leaflet.rectangle(bounds, { color: "blue", weight: 1 });
-  rect.addTo(map);
-
-  // Handle cache interactions
-  rect.bindPopup(() => {
-    const popupDiv = document.createElement("div");
-    popupDiv.innerHTML = `
-      <div>Cache at (${i}, ${j})</div>
-      <div>Coins in cache: <span id="cacheCoins">${coins.length}</span></div>
-      <div>Your coins: <span id="playerCoins">${playerPoints}</span></div>
-      <ul id="coinList">
-        ${
-          coins
-            .map((coin) => `<li>${coin.getRepresentation()}</li>`)
-            .join("")
-        }
-      </ul>
-      <button id="collect">Collect</button>
-      <button id="deposit">Deposit</button>
-    `;
-
-    // Collect button functionality
-    popupDiv
-      .querySelector<HTMLButtonElement>("#collect")!
-      .addEventListener("click", () => {
-        if (coins.length > 0) {
-          const collectedCoin = coins.pop()!;
-          collectedCoin.currentOwner = "player"; // Update ownership
-          playerPoints++;
-          popupDiv.querySelector<HTMLSpanElement>("#cacheCoins")!
-            .textContent = coins.length.toString();
-          popupDiv.querySelector<HTMLSpanElement>("#playerCoins")!
-            .textContent = playerPoints.toString();
-          popupDiv.querySelector<HTMLUListElement>("#coinList")!.innerHTML =
-            coins
-              .map((coin) => `<li>${coin.getRepresentation()}</li>`)
-              .join("");
-          statusPanel.innerHTML = `${playerPoints} coins accumulated.`;
-        } else {
-          alert("No more coins to collect!");
-        }
-      });
-
-    // Deposit button functionality
-    popupDiv
-      .querySelector<HTMLButtonElement>("#deposit")!
-      .addEventListener("click", () => {
-        if (playerPoints > 0) {
-          const depositedCoin = [...globalCoinRegistry.values()].find(
-            (coin) => coin.currentOwner === "player"
-          );
-          if (depositedCoin) {
-            depositedCoin.currentOwner = { i, j }; // Update ownership
-            coins.push(depositedCoin);
-            playerPoints--;
-            popupDiv.querySelector<HTMLSpanElement>("#cacheCoins")!
-              .textContent = coins.length.toString();
-            popupDiv.querySelector<HTMLSpanElement>("#playerCoins")!
-              .textContent = playerPoints.toString();
-            popupDiv.querySelector<HTMLUListElement>("#coinList")!.innerHTML =
-              coins
-                .map((coin) => `<li>${coin.getRepresentation()}</li>`)
-                .join("");
-            statusPanel.innerHTML = `${playerPoints} coins accumulated.`;
-          }
-        } else {
-          alert("You don't have any coins to deposit!");
-        }
-      });
-
-    return popupDiv;
+function refreshNeighborhood() {
+  map.eachLayer((layer) => {
+    if (layer instanceof leaflet.Rectangle) map.removeLayer(layer);
   });
-}
 
-// Generate caches in the player's neighborhood
-for (let di = -NEIGHBORHOOD_SIZE; di <= NEIGHBORHOOD_SIZE; di++) {
-  for (let dj = -NEIGHBORHOOD_SIZE; dj <= NEIGHBORHOOD_SIZE; dj++) {
-    const lat = OAKES_CLASSROOM.lat + di * TILE_DEGREES;
-    const lng = OAKES_CLASSROOM.lng + dj * TILE_DEGREES;
+  const centerCell = cellFactory.getCell(playerLocation.lat, playerLocation.lng);
 
-    // Determine whether to spawn a cache
-    const cell = cellFactory.getCell(lat, lng);
-    if (luck([cell.i, cell.j].toString()) < CACHE_SPAWN_PROBABILITY) {
-      spawnCache(cell.i, cell.j);
+  for (let di = -NEIGHBORHOOD_SIZE; di <= NEIGHBORHOOD_SIZE; di++) {
+    for (let dj = -NEIGHBORHOOD_SIZE; dj <= NEIGHBORHOOD_SIZE; dj++) {
+      const cell = { i: centerCell.i + di, j: centerCell.j + dj };
+      if (luck([cell.i, cell.j].toString()) < CACHE_SPAWN_PROBABILITY) {
+        spawnCache(cell.i, cell.j);
+      }
     }
   }
 }
+
+// Movement controls
+function movePlayer(direction: "north" | "south" | "east" | "west") {
+  switch (direction) {
+    case "north":
+      playerLocation = leaflet.latLng(playerLocation.lat + TILE_DEGREES, playerLocation.lng);
+      break;
+    case "south":
+      playerLocation = leaflet.latLng(playerLocation.lat - TILE_DEGREES, playerLocation.lng);
+      break;
+    case "east":
+      playerLocation = leaflet.latLng(playerLocation.lat, playerLocation.lng + TILE_DEGREES);
+      break;
+    case "west":
+      playerLocation = leaflet.latLng(playerLocation.lat, playerLocation.lng - TILE_DEGREES);
+      break;
+  }
+  refreshNeighborhood();
+  playerMarker.setLatLng(playerLocation); // Update the player marker on the map
+}
+
+// Setup button listeners
+document.querySelector("#north")?.addEventListener("click", () => movePlayer("north"));
+document.querySelector("#south")?.addEventListener("click", () => movePlayer("south"));
+document.querySelector("#east")?.addEventListener("click", () => movePlayer("east"));
+document.querySelector("#west")?.addEventListener("click", () => movePlayer("west"));
+
+// Initialize neighborhood
+refreshNeighborhood();
