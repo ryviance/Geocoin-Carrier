@@ -87,7 +87,7 @@ function spawnCache(i: number, j: number) {
 
   if (!state) {
     const initialCoinCount = Math.floor(
-      luck([i, j, "coinCount"].toString()) * 5
+      luck([i, j, "coinCount"].toString()) * 5,
     );
     for (let k = 0; k < initialCoinCount; k++) {
       coins.push(generateCoin(i, j, k));
@@ -113,7 +113,9 @@ function spawnCache(i: number, j: number) {
       </ul>
       <div>Your coins: <span id="playerPoints">${playerCoins.length}</span></div>
       <ul id="playerCoinList">
-        ${playerCoins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")}
+        ${
+          playerCoins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")
+        }
       </ul>
       <div style="margin-top: 10px;">
         <select id="collectCoinSelector" style="width: 180px;"></select>
@@ -128,9 +130,12 @@ function spawnCache(i: number, j: number) {
     setTimeout(() => {
       const collectButton = popupDiv.querySelector("#collectCoins");
       const depositButton = popupDiv.querySelector("#depositCoins");
-      const collectSelector = popupDiv.querySelector<HTMLSelectElement>("#collectCoinSelector");
-      const depositSelector = popupDiv.querySelector<HTMLSelectElement>("#depositCoinSelector");
-  
+      const collectSelector = popupDiv.querySelector<HTMLSelectElement>(
+        "#collectCoinSelector"
+      );      
+      const depositSelector = popupDiv.querySelector<HTMLSelectElement>(
+        "#depositCoinSelector"
+      );
       collectButton?.addEventListener("click", () => {
         if (coins.length > 0 && collectSelector?.value) {
           const selectedIndex = parseInt(collectSelector.value, 10);
