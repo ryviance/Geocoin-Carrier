@@ -114,8 +114,8 @@ function spawnCache(i: number, j: number) {
       <div>Your coins: <span id="playerPoints">${playerCoins.length}</span></div>
       <ul id="playerCoinList">
         ${
-          playerCoins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")
-        }
+      playerCoins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")
+    }
       </ul>
       <div style="margin-top: 10px;">
         <select id="collectCoinSelector" style="width: 180px;"></select>
@@ -126,15 +126,15 @@ function spawnCache(i: number, j: number) {
         <button id="depositCoins" style="margin-left: 5px;">Deposit Coin</button>
       </div>
     `;
-  
+
     setTimeout(() => {
       const collectButton = popupDiv.querySelector("#collectCoins");
       const depositButton = popupDiv.querySelector("#depositCoins");
       const collectSelector = popupDiv.querySelector<HTMLSelectElement>(
-        "#collectCoinSelector"
-      );      
+        "#collectCoinSelector",
+      );
       const depositSelector = popupDiv.querySelector<HTMLSelectElement>(
-        "#depositCoinSelector"
+        "#depositCoinSelector",
       );
       collectButton?.addEventListener("click", () => {
         if (coins.length > 0 && collectSelector?.value) {
@@ -148,8 +148,7 @@ function spawnCache(i: number, j: number) {
           }
         }
       });
-      
-  
+
       depositButton?.addEventListener("click", () => {
         if (playerCoins.length > 0 && depositSelector?.value) {
           const selectedIndex = parseInt(depositSelector.value, 10);
@@ -159,34 +158,40 @@ function spawnCache(i: number, j: number) {
           updatePopupUI();
           updateStatusPanel(); // Update the status panel
         }
-      });      
-  
+      });
+
       // Update the UI dynamically after changes
       function updatePopupUI() {
-        popupDiv.querySelector("#cacheCoins")!.textContent = coins.length.toString();
-        popupDiv.querySelector("#playerPoints")!.textContent = playerCoins.length.toString();
-  
+        popupDiv.querySelector("#cacheCoins")!.textContent = coins.length
+          .toString();
+        popupDiv.querySelector("#playerPoints")!.textContent = playerCoins
+          .length.toString();
+
         const cacheCoinList = popupDiv.querySelector("#cacheCoinList")!;
         cacheCoinList.innerHTML = coins
           .map((coin) => `<li>${coin.getRepresentation()}</li>`)
           .join("");
-  
+
         const playerCoinList = popupDiv.querySelector("#playerCoinList")!;
         playerCoinList.innerHTML = playerCoins
           .map((coin) => `<li>${coin.getRepresentation()}</li>`)
           .join("");
-  
+
         const collectOptions = popupDiv.querySelector("#collectCoinSelector")!;
         collectOptions.innerHTML = coins
-          .map((coin, idx) => `<option value="${idx}">${coin.getRepresentation()}</option>`)
+          .map((coin, idx) =>
+            `<option value="${idx}">${coin.getRepresentation()}</option>`
+          )
           .join("");
-  
+
         const depositOptions = popupDiv.querySelector("#depositCoinSelector")!;
         depositOptions.innerHTML = playerCoins
-          .map((coin, idx) => `<option value="${idx}">${coin.getRepresentation()}</option>`)
+          .map((coin, idx) =>
+            `<option value="${idx}">${coin.getRepresentation()}</option>`
+          )
           .join("");
       }
-  
+
       updatePopupUI(); // Initial UI update
     });
 
@@ -205,7 +210,6 @@ function updateStatusPanel() {
     }
   }
 }
-
 
 // Flyweight pattern to manage cells
 const cellFactory = (() => {
@@ -230,7 +234,10 @@ function refreshNeighborhood() {
     if (layer instanceof leaflet.Rectangle) map.removeLayer(layer);
   });
 
-  const centerCell = cellFactory.getCell(playerLocation.lat, playerLocation.lng);
+  const centerCell = cellFactory.getCell(
+    playerLocation.lat,
+    playerLocation.lng,
+  );
 
   for (let di = -NEIGHBORHOOD_SIZE; di <= NEIGHBORHOOD_SIZE; di++) {
     for (let dj = -NEIGHBORHOOD_SIZE; dj <= NEIGHBORHOOD_SIZE; dj++) {
@@ -246,16 +253,28 @@ function refreshNeighborhood() {
 function movePlayer(direction: "north" | "south" | "east" | "west") {
   switch (direction) {
     case "north":
-      playerLocation = leaflet.latLng(playerLocation.lat + TILE_DEGREES, playerLocation.lng);
+      playerLocation = leaflet.latLng(
+        playerLocation.lat + TILE_DEGREES,
+        playerLocation.lng,
+      );
       break;
     case "south":
-      playerLocation = leaflet.latLng(playerLocation.lat - TILE_DEGREES, playerLocation.lng);
+      playerLocation = leaflet.latLng(
+        playerLocation.lat - TILE_DEGREES,
+        playerLocation.lng,
+      );
       break;
     case "east":
-      playerLocation = leaflet.latLng(playerLocation.lat, playerLocation.lng + TILE_DEGREES);
+      playerLocation = leaflet.latLng(
+        playerLocation.lat,
+        playerLocation.lng + TILE_DEGREES,
+      );
       break;
     case "west":
-      playerLocation = leaflet.latLng(playerLocation.lat, playerLocation.lng - TILE_DEGREES);
+      playerLocation = leaflet.latLng(
+        playerLocation.lat,
+        playerLocation.lng - TILE_DEGREES,
+      );
       break;
   }
   refreshNeighborhood();
@@ -263,10 +282,22 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
 }
 
 // Setup button listeners
-document.querySelector("#north")?.addEventListener("click", () => movePlayer("north"));
-document.querySelector("#south")?.addEventListener("click", () => movePlayer("south"));
-document.querySelector("#east")?.addEventListener("click", () => movePlayer("east"));
-document.querySelector("#west")?.addEventListener("click", () => movePlayer("west"));
+document.querySelector("#north")?.addEventListener(
+  "click",
+  () => movePlayer("north"),
+);
+document.querySelector("#south")?.addEventListener(
+  "click",
+  () => movePlayer("south"),
+);
+document.querySelector("#east")?.addEventListener(
+  "click",
+  () => movePlayer("east"),
+);
+document.querySelector("#west")?.addEventListener(
+  "click",
+  () => movePlayer("west"),
+);
 
 // Initialize neighborhood
 refreshNeighborhood();
