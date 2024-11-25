@@ -301,3 +301,82 @@ document.querySelector("#west")?.addEventListener(
 
 // Initialize neighborhood
 refreshNeighborhood();
+
+// Variable to manage geolocation tracking
+let isTrackingLocation = false;
+let watchId: number | null = null;
+
+// Get the 🌐 button from the DOM (inside the control panel)
+const globeButton = document.getElementById("sensor") as HTMLButtonElement;
+
+// Check if the button exists
+if (!globeButton) {
+  console.error("Geolocation button not found.");
+} else {
+  // You can style the button here if needed, or let the CSS handle it
+  globeButton.style.position = "relative"; // Example styling if needed
+  
+  // Handle geolocation toggle
+  globeButton.addEventListener("click", () => {
+    if (isTrackingLocation) {
+      // Stop tracking
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      isTrackingLocation = false;
+      globeButton.style.backgroundColor = ""; // Reset button style
+      alert("Geolocation tracking disabled.");
+    } else {
+      // Start tracking
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      isTrackingLocation = true;
+      globeButton.style.backgroundColor = "lightgreen"; // Highlight button
+      alert("Geolocation tracking enabled.");
+
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newLocation = leaflet.latLng(latitude, longitude);
+
+          // Update player location and refresh the neighborhood
+          playerLocation = newLocation;
+          playerMarker.setLatLng(playerLocation);
+          refreshNeighborhood();
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          alert("Failed to get geolocation. Check permissions and try again.");
+        },
+        {
+          enableHighAccuracy: true, // Use high accuracy if available
+          maximumAge: 1000, // Accept cached positions up to 1 second old
+          timeout: 10000, // Timeout after 10 seconds if no position is obtained
+        },
+      );
+    }
+  });
+}
+
+// Get the 📍 button from the DOM (inside the control panel)
+const centerButton = document.getElementById("center") as HTMLButtonElement;
+
+// Check if the button exists
+if (!centerButton) {
+  console.error("Center button not found.");
+} else {
+  // Handle center-on-player functionality
+  centerButton.addEventListener("click", () => {
+    if (!playerLocation) {
+      alert("Player location is not available. Make sure geolocation is enabled.");
+      return;
+    }
+
+    // Center the map on the player's location
+    map.setView(playerLocation, map.getZoom());
+  });
+}
