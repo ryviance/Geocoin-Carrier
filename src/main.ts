@@ -421,6 +421,18 @@ function saveGameState() {
   localStorage.setItem("gameState", JSON.stringify(gameState));
 }
 
+interface Coin {
+  coinID: number;
+  i: number;
+  j: number;
+  serial: number;
+}
+
+interface CacheState {
+  key: string;
+  coins: Coin[];
+}
+
 // Load the game state from localStorage
 function loadGameState() {
   const gameStateString = localStorage.getItem("gameState");
@@ -436,7 +448,7 @@ function loadGameState() {
 
     // Restore player coins
     playerCoins.length = 0; // Clear current player coins
-    gameState.playerCoins.forEach((coinData: any) => {
+    gameState.playerCoins.forEach((coinData: Coin) => {
       const coin = generateCoin(
         coinData.i,
         coinData.j,
@@ -448,8 +460,8 @@ function loadGameState() {
 
     // Restore cache states
     cacheStateMemento.clear(); // Clear existing cache states
-    gameState.cacheStates.forEach((cacheState: any) => {
-      const coins = cacheState.coins.map((coinData: any) => {
+    gameState.cacheStates.forEach((cacheState: CacheState) => {
+      const coins = cacheState.coins.map((coinData: Coin) => {
         const coin = generateCoin(
           coinData.i,
           coinData.j,
