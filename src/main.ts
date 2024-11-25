@@ -145,6 +145,7 @@ function spawnCache(i: number, j: number) {
             saveCacheState(i, j, coins); // Save updated cache state
             updatePopupUI();
             updateStatusPanel(); // Update the status panel
+            saveGameState();
           }
         }
       });
@@ -157,6 +158,7 @@ function spawnCache(i: number, j: number) {
           saveCacheState(i, j, coins); // Save updated cache state
           updatePopupUI();
           updateStatusPanel(); // Update the status panel
+          saveGameState();
         }
       });
 
@@ -249,7 +251,10 @@ function refreshNeighborhood() {
   }
 }
 
-// Movement controls
+// Create a polyline to track movement history
+const movementHistory: [number, number][] = [];
+const movementPolyline = leaflet.polyline([], { color: "blue" }).addTo(map);
+
 function movePlayer(direction: "north" | "south" | "east" | "west") {
   switch (direction) {
     case "north":
@@ -277,8 +282,14 @@ function movePlayer(direction: "north" | "south" | "east" | "west") {
       );
       break;
   }
-  refreshNeighborhood();
+
+  // Update movement history
+  movementHistory.push([playerLocation.lat, playerLocation.lng]);
+  movementPolyline.setLatLngs(movementHistory); // Update the polyline on the map
+
+  refreshNeighborhood(); // Refresh the neighborhood (existing functionality)
   playerMarker.setLatLng(playerLocation); // Update the player marker on the map
+  saveGameState();
 }
 
 // Setup button listeners
@@ -315,7 +326,7 @@ if (!globeButton) {
 } else {
   // You can style the button here if needed, or let the CSS handle it
   globeButton.style.position = "relative"; // Example styling if needed
-  
+
   // Handle geolocation toggle
   globeButton.addEventListener("click", () => {
     if (isTrackingLocation) {
@@ -372,7 +383,9 @@ if (!centerButton) {
   // Handle center-on-player functionality
   centerButton.addEventListener("click", () => {
     if (!playerLocation) {
-      alert("Player location is not available. Make sure geolocation is enabled.");
+      alert(
+        "Player location is not available. Make sure geolocation is enabled.",
+      );
       return;
     }
 
@@ -380,3 +393,111 @@ if (!centerButton) {
     map.setView(playerLocation, map.getZoom());
   });
 }
+
+// Save the game state to localStorage
+function saveGameState() {
+  const gameState = {
+    playerLocation: { lat: playerLocation.lat, lng: playerLocation.lng },
+    playerCoins: playerCoins.map((coin) => ({
+      coinID: coin.coinID,
+      i: coin.i,
+      j: coin.j,
+      serial: coin.serial,
+    })),
+    cacheStates: Array.from(cacheStateMemento.entries()).map(
+      ([key, state]) => ({
+        key,
+        coins: state.coins.map((coin) => ({
+          coinID: coin.coinID,
+          i: coin.i,
+          j: coin.j,
+          serial: coin.serial,
+        })),
+      }),
+    ),
+    movementHistory: movementHistory, // Save the movement history (polyline)
+  };
+
+  localStorage.setItem("gameState", JSON.stringify(gameState));
+}
+
+// Load the game state from localStorage
+function loadGameState() {
+  const gameStateString = localStorage.getItem("gameState");
+  if (gameStateString) {
+    const gameState = JSON.parse(gameStateString);
+
+    // Restore player location
+    playerLocation = leaflet.latLng(
+      gameState.playerLocation.lat,
+      gameState.playerLocation.lng,
+    );
+    playerMarker.setLatLng(playerLocation);
+
+    // Restore player coins
+    playerCoins.length = 0; // Clear current player coins
+    gameState.playerCoins.forEach((coinData: any) => {
+      const coin = generateCoin(
+        coinData.i,
+        coinData.j,
+        coinData.serial,
+      );
+      coin.coinID = coinData.coinID; // Restore coin ID
+      playerCoins.push(coin);
+    });
+
+    // Restore cache states
+    cacheStateMemento.clear(); // Clear existing cache states
+    gameState.cacheStates.forEach((cacheState: any) => {
+      const coins = cacheState.coins.map((coinData: any) => {
+        const coin = generateCoin(
+          coinData.i,
+          coinData.j,
+          coinData.serial,
+        );
+        coin.coinID = coinData.coinID; // Restore coin ID
+        return coin;
+      });
+      cacheStateMemento.set(cacheState.key, { coins });
+    });
+
+    // Restore movement history (polyline)
+    movementHistory.length = 0; // Clear current movement history
+    movementHistory.push(...gameState.movementHistory);
+    movementPolyline.setLatLngs(movementHistory); // Update the polyline with restored movement history
+
+    // Refresh the neighborhood to restore cache UI
+    refreshNeighborhood();
+
+    // Update the status panel
+    updateStatusPanel();
+  }
+}
+
+// Call loadGameState on page load
+loadGameState();
+
+document.querySelector("#reset")?.addEventListener("click", () => {
+  // Clear storage
+  localStorage.clear();
+
+  // Reset player state
+  playerLocation = OAKES_CLASSROOM;
+  playerMarker.setLatLng(playerLocation);
+
+  // Clear movement history
+  movementHistory.length = 0;
+  movementPolyline.setLatLngs(movementHistory);
+
+  // Reset player coins
+  playerCoins.length = 0;
+
+  // Clear caches
+  cacheStateMemento.clear();
+
+  // Refresh neighborhood
+  refreshNeighborhood();
+  updateStatusPanel();
+
+  alert("Game reset successfully!");
+});
