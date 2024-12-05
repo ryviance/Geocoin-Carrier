@@ -103,102 +103,105 @@ function spawnCache(i: number, j: number) {
   const rect = leaflet.rectangle(bounds, { color: "blue", weight: 1 });
   rect.addTo(map);
 
-  rect.bindPopup(() => {
-    const popupDiv = document.createElement("div");
-    popupDiv.innerHTML = `
-      <div>Cache at (${i}, ${j})</div>
-      <div>Coins in cache: <span id="cacheCoins">${coins.length}</span></div>
-      <ul id="cacheCoinList">
-        ${coins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")}
-      </ul>
-      <div>Your coins: <span id="playerPoints">${playerCoins.length}</span></div>
-      <ul id="playerCoinList">
-        ${
-      playerCoins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")
-    }
-      </ul>
-      <div style="margin-top: 10px;">
-        <select id="collectCoinSelector" style="width: 180px;"></select>
-        <button id="collectCoins" style="margin-left: 5px;">Collect Coin</button>
-      </div>
-      <div style="margin-top: 10px;">
-        <select id="depositCoinSelector" style="width: 180px;"></select>
-        <button id="depositCoins" style="margin-left: 5px;">Deposit Coin</button>
-      </div>
-    `;
+  rect.bindPopup(() => createCachePopup(i, j, coins));
+}
 
-    setTimeout(() => {
-      const collectButton = popupDiv.querySelector("#collectCoins");
-      const depositButton = popupDiv.querySelector("#depositCoins");
-      const collectSelector = popupDiv.querySelector<HTMLSelectElement>(
-        "#collectCoinSelector",
-      );
-      const depositSelector = popupDiv.querySelector<HTMLSelectElement>(
-        "#depositCoinSelector",
-      );
-      collectButton?.addEventListener("click", () => {
-        if (coins.length > 0 && collectSelector?.value) {
-          const selectedIndex = parseInt(collectSelector.value, 10);
-          const collectedCoin = coins.splice(selectedIndex, 1)[0]; // Remove the selected coin from cache
-          if (collectedCoin) {
-            playerCoins.push(collectedCoin); // Add it to player's inventory
-            saveCacheState(i, j, coins); // Save updated cache state
-            updatePopupUI();
-            updateStatusPanel(); // Update the status panel
-            saveGameState();
-          }
-        }
-      });
+function createCachePopup(i: number, j: number, coins: Coin[]): HTMLElement {
+  const popupDiv = document.createElement("div");
 
-      depositButton?.addEventListener("click", () => {
-        if (playerCoins.length > 0 && depositSelector?.value) {
-          const selectedIndex = parseInt(depositSelector.value, 10);
-          const selectedCoin = playerCoins.splice(selectedIndex, 1)[0]; // Remove selected coin from inventory
-          coins.push(selectedCoin); // Add the coin to the cache
-          saveCacheState(i, j, coins); // Save updated cache state
-          updatePopupUI();
-          updateStatusPanel(); // Update the status panel
+  // Render initial popup HTML structure
+  popupDiv.innerHTML = `
+    <div>Cache at (${i}, ${j})</div>
+    <div>Coins in cache: <span id="cacheCoins">${coins.length}</span></div>
+    <ul id="cacheCoinList">
+      ${coins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")}
+    </ul>
+    <div>Your coins: <span id="playerPoints">${playerCoins.length}</span></div>
+    <ul id="playerCoinList">
+      ${
+    playerCoins.map((coin) => `<li>${coin.getRepresentation()}</li>`).join("")
+  }
+    </ul>
+    <div style="margin-top: 10px;">
+      <select id="collectCoinSelector" style="width: 180px;"></select>
+      <button id="collectCoins" style="margin-left: 5px;">Collect Coin</button>
+    </div>
+    <div style="margin-top: 10px;">
+      <select id="depositCoinSelector" style="width: 180px;"></select>
+      <button id="depositCoins" style="margin-left: 5px;">Deposit Coin</button>
+    </div>
+  `;
+
+  // Add UI logic after rendering
+  setTimeout(() => {
+    const collectButton = popupDiv.querySelector("#collectCoins");
+    const depositButton = popupDiv.querySelector("#depositCoins");
+    const collectSelector = popupDiv.querySelector<HTMLSelectElement>(
+      "#collectCoinSelector",
+    );
+    const depositSelector = popupDiv.querySelector<HTMLSelectElement>(
+      "#depositCoinSelector",
+    );
+
+    collectButton?.addEventListener("click", () => {
+      if (coins.length > 0 && collectSelector?.value) {
+        const selectedIndex = parseInt(collectSelector.value, 10);
+        const collectedCoin = coins.splice(selectedIndex, 1)[0];
+        if (collectedCoin) {
+          playerCoins.push(collectedCoin);
+          saveCacheState(i, j, coins);
+          updateCachePopupUI(popupDiv, coins);
+          updateStatusPanel();
           saveGameState();
         }
-      });
-
-      // Update the UI dynamically after changes
-      function updatePopupUI() {
-        popupDiv.querySelector("#cacheCoins")!.textContent = coins.length
-          .toString();
-        popupDiv.querySelector("#playerPoints")!.textContent = playerCoins
-          .length.toString();
-
-        const cacheCoinList = popupDiv.querySelector("#cacheCoinList")!;
-        cacheCoinList.innerHTML = coins
-          .map((coin) => `<li>${coin.getRepresentation()}</li>`)
-          .join("");
-
-        const playerCoinList = popupDiv.querySelector("#playerCoinList")!;
-        playerCoinList.innerHTML = playerCoins
-          .map((coin) => `<li>${coin.getRepresentation()}</li>`)
-          .join("");
-
-        const collectOptions = popupDiv.querySelector("#collectCoinSelector")!;
-        collectOptions.innerHTML = coins
-          .map((coin, idx) =>
-            `<option value="${idx}">${coin.getRepresentation()}</option>`
-          )
-          .join("");
-
-        const depositOptions = popupDiv.querySelector("#depositCoinSelector")!;
-        depositOptions.innerHTML = playerCoins
-          .map((coin, idx) =>
-            `<option value="${idx}">${coin.getRepresentation()}</option>`
-          )
-          .join("");
       }
-
-      updatePopupUI(); // Initial UI update
     });
 
-    return popupDiv;
+    depositButton?.addEventListener("click", () => {
+      if (playerCoins.length > 0 && depositSelector?.value) {
+        const selectedIndex = parseInt(depositSelector.value, 10);
+        const selectedCoin = playerCoins.splice(selectedIndex, 1)[0];
+        coins.push(selectedCoin);
+        saveCacheState(i, j, coins);
+        updateCachePopupUI(popupDiv, coins);
+        updateStatusPanel();
+        saveGameState();
+      }
+    });
+
+    updateCachePopupUI(popupDiv, coins); // Initial UI update
   });
+
+  return popupDiv;
+}
+
+function updateCachePopupUI(popupDiv: HTMLElement, coins: Coin[]) {
+  // Update cache and player data
+  popupDiv.querySelector("#cacheCoins")!.textContent = coins.length.toString();
+  popupDiv.querySelector("#playerPoints")!.textContent = playerCoins.length
+    .toString();
+
+  // Update coin lists
+  popupDiv.querySelector("#cacheCoinList")!.innerHTML = coins
+    .map((coin) => `<li>${coin.getRepresentation()}</li>`)
+    .join("");
+
+  popupDiv.querySelector("#playerCoinList")!.innerHTML = playerCoins
+    .map((coin) => `<li>${coin.getRepresentation()}</li>`)
+    .join("");
+
+  // Update selector options
+  popupDiv.querySelector("#collectCoinSelector")!.innerHTML = coins
+    .map((coin, idx) =>
+      `<option value="${idx}">${coin.getRepresentation()}</option>`
+    )
+    .join("");
+
+  popupDiv.querySelector("#depositCoinSelector")!.innerHTML = playerCoins
+    .map((coin, idx) =>
+      `<option value="${idx}">${coin.getRepresentation()}</option>`
+    )
+    .join("");
 }
 
 // Status Panel
