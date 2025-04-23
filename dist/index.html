@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* Ensure the app takes the full screen */
+        html, body, #app {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Control panel layout */
+        #controlPanel {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #ccc;
+        }
+
+        #controlPanel button {
+            font-size: 20px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: white;
+            padding: 5px 10px;
+        }
+
+        #controlPanel button:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Status panel styles */
+        #statusPanel {
+            padding: 10px;
+            background-color: #e9ecef;
+            border-bottom: 1px solid #ccc;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        /* Map container styling */
+        #map {
+            flex-grow: 1;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+  <script type="module" crossorigin src="/project/assets/index-jdf0ope6.js"></script>
+  <link rel="stylesheet" crossorigin href="/project/assets/index-CY4qbuUX.css">
+</head>
+<body>
+    <div id="app">
+        <div id="controlPanel">
+            <button id="sensor" title="sensor">🌐</button>
+            <button id="center" title="center">📍</button>
+            <button id="north" title="north">⬆️</button>
+            <button id="south" title="south">⬇️</button>
+            <button id="west" title="west">⬅️</button>
+            <button id="east" title="east">➡️</button>
+            <button id="reset" title="reset">🚮</button>
+        </div>
+        <div id="statusPanel">No coins yet...</div> <!-- This is the player's points display -->
+        <div id="map"></div> <!-- This is the Leaflet map container -->
+    </div>
+</body>
+</html>
